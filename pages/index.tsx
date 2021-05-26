@@ -2,117 +2,12 @@ import Head from 'next/head'
 import Image from "next/image";
 import serverApi, {MovieSearchResponse} from "../api";
 import {Button, Input} from "reakit";
-import {useCallback, useEffect, useMemo, useState} from "react";
 import {GetServerSideProps} from "next";
 import {parseToNumber} from "../utils";
-import {useRouter} from "next/dist/client/router";
-import {Movie} from "../types/movie";
 import LazyLoadingScroll from "../components/lazy-loading-scroll";
-
-const useSearchMovieForm = () => {
-    const router = useRouter();
-    const [formState, setFormState] = useState<Record<string, string>>({
-        title: router.query.title?.toString() ?? process.env.DEFAULT_TITLE!,
-        year: router.query.year?.toString() ?? process.env.DEFAULT_YEAR!
-    })
-
-    const handleChange = useCallback(({currentTarget}: React.FormEvent<HTMLInputElement>) => {
-        const newState = {
-            ...formState,
-            [currentTarget.name]: currentTarget.value
-        };
-        setFormState(newState)
-
-        const query = new URLSearchParams({
-            title: newState.title,
-            year: newState.year
-        });
-
-        router.replace(`${router.pathname}?${query}`);
-    }, [formState])
-
-    return {
-        formState,
-        handleChange
-    }
-}
-
-const useSearchMoviesFormValidator = (formState: Record<string, string | number | undefined>) => {
-
-    return useMemo(() => {
-        const year = Number.isNaN(formState?.year) ? 0 : Number(formState?.year);
-        const titleError = Boolean(formState.title) ? null : 'Enter title';
-        const yearError = year >= 1900 || year <= 2050 ? null : 'Wrong year';
-
-        return {
-            title: titleError,
-            year: yearError
-        }
-    }, [formState.year, formState.title])
-}
-
-async function fetchMovies(page: number, formState: Record<string, string>) {
-    const query = new URLSearchParams({
-        page: page.toString(),
-        year: formState?.year ?? process.env.DEFAULT_YEAR,
-        title: formState?.title?.toString() ?? process.env.DEFAULT_TITLE
-    })
-
-    const response = await window.fetch(`/api/movies/?${query}`);
-    return await response.json() as MovieSearchResponse;
-}
-
-const useFormLazyFetch = (initialTotalResult: number, initialMovies: Movie[], formState: Record<string, string>) => {
-    const [page, setPage] = useState(1);
-    const [isLoading, setLoading] = useState(false)
-    const [totalResults, setTotalResults] = useState(initialTotalResult ?? 0);
-    const [movies, setMovies] = useState(initialMovies)
-
-    const fetch = useCallback(async () => {
-        if (movies.length >= totalResults || isLoading) {
-            return
-        }
-
-        setLoading(true);
-        const data = await fetchMovies(page, formState);
-
-        setTotalResults(data.totalResults);
-        setMovies(page === 1 ? data.result : movies.concat(data.result));
-        setLoading(false);
-    }, [formState, page]);
-
-    const goNext = useCallback(() => {
-        if (isLoading) {
-            return
-        }
-
-        setPage(page => page + 1);
-    }, [isLoading]);
-
-    useEffect(() => {
-        async function fetchFreshPage() {
-            setPage(1)
-            setLoading(true);
-            const movieSearchResponse = await fetchMovies(1, formState);
-            setMovies(movieSearchResponse.result);
-            setTotalResults(movieSearchResponse.totalResults);
-            setLoading(false);
-        }
-
-        fetchFreshPage();
-    }, [formState.year, formState.title])
-
-    useEffect(() => {
-        fetch()
-    }, [page])
-
-    return {
-        totalResults,
-        movies,
-        goNext
-    }
-}
-
+import useSearchMovieForm from "../components/use-search-movie-form";
+import useSearchMoviesFormValidator from "../components/use-search-movie-form-validator";
+import useFormLazyFetch from "../components/use-form-lazy-fetch";
 
 const Index = (props: MovieSearchResponse) => {
     const {handleChange, formState} = useSearchMovieForm();
