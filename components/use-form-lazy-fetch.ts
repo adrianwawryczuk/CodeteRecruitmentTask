@@ -1,5 +1,6 @@
 import {Movie} from "../types/movie";
 import {useCallback, useEffect, useState} from "react";
+import fetchMovies from "../api/fetch-movies";
 
 const useFormLazyFetch = (initialTotalResult: number, initialMovies: Movie[], formState: Record<string, string>) => {
     const [page, setPage] = useState(1);
